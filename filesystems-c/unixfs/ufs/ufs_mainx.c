@@ -23,13 +23,14 @@ static struct filesystems {
     char* fstypename;
     char* fstypename_canonical;
 } filesystems[] = {
-    { 0, "old",         "ufs" },
+    { 0, "42bsd",         "ufs" },
     { 0, "sunos",       "ufs" },
     { 0, "sun",         "ufs" },
     { 0, "sunx86",      "ufs" }, 
     { 0, "hp",          "ufs" },
     { 0, "nextstep",    "ufs" },
     { 0, "nextstep-cd", "ufs" },
+    { 0, "43bsd",       "ufs" },
     { 0, "openstep",    "ufs" },
     { 0, "44bsd",       "ufs" },
     { 0, "5xbsd",       "ufs" },

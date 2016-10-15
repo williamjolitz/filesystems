@@ -136,7 +136,7 @@ ufs_get_fs_qfmask(struct super_block *sb, struct ufs_super_block_third *usb3)
 static inline u16
 ufs_get_de_namlen(struct super_block *sb, struct ufs_dir_entry *de)
 {
-	if ((UFS_SB(sb)->s_flags & UFS_DE_MASK) == UFS_DE_OLD)
+	if ((UFS_SB(sb)->s_flags & UFS_DE_MASK) == UFS_DE_42BSD)
 		return fs16_to_cpu(sb, de->d_u.d_namlen);
 	else
 		return de->d_u.d_44.d_namlen; /* XXX this seems wrong */
@@ -145,7 +145,7 @@ ufs_get_de_namlen(struct super_block *sb, struct ufs_dir_entry *de)
 static inline void
 ufs_set_de_namlen(struct super_block *sb, struct ufs_dir_entry *de, u16 value)
 {
-	if ((UFS_SB(sb)->s_flags & UFS_DE_MASK) == UFS_DE_OLD)
+	if ((UFS_SB(sb)->s_flags & UFS_DE_MASK) == UFS_DE_42BSD)
 		de->d_u.d_namlen = cpu_to_fs16(sb, value);
 	else
 		de->d_u.d_44.d_namlen = value; /* XXX this seems wrong */

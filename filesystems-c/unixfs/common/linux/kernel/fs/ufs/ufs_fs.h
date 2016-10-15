@@ -25,6 +25,7 @@
  * UFS2 (of FreeBSD 5.x) support added by
  * Niraj Kumar <niraj17@iitbombay.org>  , Jan 2004
  *
+ * 4.3BSD support added by William F. Jolitz, Oct 2016
  */
 
 #ifndef __LINUX_UFS_FS_H
@@ -148,24 +149,25 @@ typedef __u16 __bitwise __fs16;
 /* From here to next blank line, s_flags for ufs_sb_info */
 /* directory entry encoding */
 #define UFS_DE_MASK		0x00000010	/* mask for the following */
-#define UFS_DE_OLD		0x00000000
-#define UFS_DE_44BSD		0x00000010
+#define UFS_DE_42BSD		0x00000000	/* 4.2 and 4.3BSD */
+#define UFS_DE_44BSD		0x00000010	/* 4.4BSD and on */
 /* uid encoding */
 #define UFS_UID_MASK		0x00000060	/* mask for the following */
-#define UFS_UID_OLD		0x00000000
+#define UFS_UID_42BSD		0x00000000	/* 4.2 and 4.3BSD */
 #define UFS_UID_44BSD		0x00000020
 #define UFS_UID_EFT		0x00000040
 /* superblock state encoding */
-#define UFS_ST_MASK		0x00000700	/* mask for the following */
-#define UFS_ST_OLD		0x00000000
-#define UFS_ST_44BSD		0x00000100
-#define UFS_ST_SUN		0x00000200 /* Solaris */
-#define UFS_ST_SUNOS		0x00000300
-#define UFS_ST_SUNx86		0x00000400 /* Solaris x86 */
+#define UFS_ST_MASK		0x00000f00	/* mask for the following */
+#define UFS_ST_42BSD		0x00000000
+#define UFS_ST_43BSD		0x00000100
+#define UFS_ST_44BSD		0x00000200
+#define UFS_ST_SUN		0x00000300 /* Solaris */
+#define UFS_ST_SUNOS		0x00000400
+#define UFS_ST_SUNx86		0x00000500 /* Solaris x86 */
 /*cylinder group encoding */
 #define UFS_CG_MASK		0x00003000	/* mask for the following */
-#define UFS_CG_OLD		0x00000000
-#define UFS_CG_44BSD		0x00002000
+#define UFS_CG_42BSD		0x00000000	/* 4.2BSD */
+#define UFS_CG_44BSD		0x00002000	/* 4.3BSD uses same ignoring extensions */
 #define UFS_CG_SUN		0x00001000
 /* filesystem type encoding */
 #define UFS_TYPE_MASK		0x00010000	/* mask for the following */
@@ -561,7 +563,7 @@ struct	ufs_cylinder_group {
 /* actually longer */
 };
 
-/* Historic Cylinder group info */
+/* 4.2BSD Historic Cylinder group info */
 struct ufs_old_cylinder_group {
 	__fs32	cg_link;		/* linked list of cyl groups */
 	__fs32	cg_rlink;		/* for incore cyl groups     */
@@ -925,6 +927,12 @@ struct ufs_super_block_third {
 			__fs32	fs_qbmask[2];	/* ~usb_bmask */
 			__fs32	fs_qfmask[2];	/* ~usb_fmask */
 		} fs_sunx86;
+                struct {
+                        __fs32  fs_sparecon[55];/* reserved for future constants */
+                        __fs32  fs_state;       /* file system state time stamp */
+                        __fs32  fs_qbmask[2];   /* ~usb_bmask */
+                        __fs32  fs_qfmask[2];   /* ~usb_fmask */
+                } fs_43;
 		struct {
 			__fs32	fs_sparecon[50];/* reserved for future constants */
 			__fs32	fs_contigsumsize;/* size of cluster summary array */

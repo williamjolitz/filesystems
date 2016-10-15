@@ -55,10 +55,11 @@ static void
         struct ufs_super_block_third*  usb3) UFS_USED;
 
 enum {
-   Opt_type_old        = UFS_MOUNT_UFSTYPE_OLD,
+   Opt_type_old        = UFS_MOUNT_UFSTYPE_42BSD,
    Opt_type_sunx86     = UFS_MOUNT_UFSTYPE_SUNx86,
    Opt_type_sun        = UFS_MOUNT_UFSTYPE_SUN,
    Opt_type_sunos      = UFS_MOUNT_UFSTYPE_SUNOS,
+   Opt_type_43bsd      = UFS_MOUNT_UFSTYPE_43BSD,
    Opt_type_44bsd      = UFS_MOUNT_UFSTYPE_44BSD,
    Opt_type_ufs2       = UFS_MOUNT_UFSTYPE_UFS2,
    Opt_type_hp         = UFS_MOUNT_UFSTYPE_HP,
@@ -73,10 +74,11 @@ enum {
 };
 
 static match_table_t tokens __attribute__((used)) = {
-    { Opt_type_old,        "old"         },
+    {Opt_type_old,        "42bsd"        },
     { Opt_type_sunx86,     "sunx86"      },
     { Opt_type_sun,        "sun"         },
     { Opt_type_sunos,      "sunos"       },
+    { Opt_type_43bsd,      "43bsd"       },
     { Opt_type_44bsd,      "44bsd"       },
     { Opt_type_ufs2,       "ufs2"        },
     { Opt_type_ufs2,       "5xbsd"       },
@@ -229,7 +231,7 @@ ufs_parse_options(char* options, unsigned* mount_options)
         switch (token) {
         case Opt_type_old:
             ufs_clear_opt(*mount_options, UFSTYPE);
-            ufs_set_opt(*mount_options, UFSTYPE_OLD);
+            ufs_set_opt(*mount_options, UFSTYPE_42BSD);
             break;
 
         case Opt_type_sunx86:
@@ -245,6 +247,11 @@ ufs_parse_options(char* options, unsigned* mount_options)
         case Opt_type_sunos:
             ufs_clear_opt(*mount_options, UFSTYPE);
             ufs_set_opt(*mount_options, UFSTYPE_SUNOS);
+            break;
+
+        case Opt_type_43bsd:
+            ufs_clear_opt(*mount_options, UFSTYPE);
+            ufs_set_opt(*mount_options, UFSTYPE_43BSD);
             break;
 
         case Opt_type_44bsd:
@@ -1003,7 +1010,7 @@ U_ufs_fill_super(int fd, void* data, int silent)
     }
 
     if (!(sbi->s_mount_opt & UFS_MOUNT_UFSTYPE))
-        ufs_set_opt(sbi->s_mount_opt, UFSTYPE_OLD);
+        ufs_set_opt(sbi->s_mount_opt, UFSTYPE_42BSD);
 
     uspi = kzalloc(sizeof(struct ufs_sb_private_info), GFP_KERNEL);
     sbi->s_uspi = uspi;
@@ -1014,6 +1021,16 @@ U_ufs_fill_super(int fd, void* data, int silent)
     super_block_offset=UFS_SBLOCK;
 
     switch (sbi->s_mount_opt & UFS_MOUNT_UFSTYPE) {
+
+    case UFS_MOUNT_UFSTYPE_43BSD:
+        UFSD("ufstype=43bsd\n");
+        uspi->s_fsize  = block_size = 512;
+        uspi->s_fmask  = ~(512 - 1);
+        uspi->s_fshift = 9;
+        uspi->s_sbsize = super_block_size = 1536;
+        uspi->s_sbbase = 0;
+        flags |= UFS_DE_42BSD | UFS_UID_42BSD | UFS_ST_43BSD | UFS_CG_44BSD;
+        break;
 
     case UFS_MOUNT_UFSTYPE_44BSD:
         UFSD("ufstype=44bsd\n");
@@ -1044,7 +1061,7 @@ U_ufs_fill_super(int fd, void* data, int silent)
         uspi->s_sbsize = super_block_size = 2048;
         uspi->s_sbbase = 0;
         uspi->s_maxsymlinklen = 0; /* Not supported on disk */
-        flags |= UFS_DE_OLD | UFS_UID_EFT | UFS_ST_SUN | UFS_CG_SUN;
+        flags |= UFS_DE_42BSD | UFS_UID_EFT | UFS_ST_SUN | UFS_CG_SUN;
         break;
 
     case UFS_MOUNT_UFSTYPE_SUNOS:
@@ -1056,7 +1073,7 @@ U_ufs_fill_super(int fd, void* data, int silent)
         super_block_size = 2048;
         uspi->s_sbbase   = 0;
         uspi->s_maxsymlinklen = 0; /* Not supported on disk */
-        flags |= UFS_DE_OLD | UFS_UID_OLD | UFS_ST_SUNOS | UFS_CG_SUN;
+        flags |= UFS_DE_42BSD | UFS_UID_42BSD | UFS_ST_SUNOS | UFS_CG_SUN;
         break;
 
     case UFS_MOUNT_UFSTYPE_SUNx86:
@@ -1067,17 +1084,17 @@ U_ufs_fill_super(int fd, void* data, int silent)
         uspi->s_sbsize = super_block_size = 2048;
         uspi->s_sbbase = 0;
         uspi->s_maxsymlinklen = 0; /* Not supported on disk */
-        flags |= UFS_DE_OLD | UFS_UID_EFT | UFS_ST_SUNx86 | UFS_CG_SUN;
+        flags |= UFS_DE_42BSD | UFS_UID_EFT | UFS_ST_SUNx86 | UFS_CG_SUN;
         break;
 
-    case UFS_MOUNT_UFSTYPE_OLD:
-        UFSD("ufstype=old\n");
+    case UFS_MOUNT_UFSTYPE_42BSD:
+        UFSD("ufstype=42bsd\n");
         uspi->s_fsize  = block_size = 1024;
         uspi->s_fmask  = ~(1024 - 1);
         uspi->s_fshift = 10;
         uspi->s_sbsize = super_block_size = 2048;
         uspi->s_sbbase = 0;
-        flags |= UFS_DE_OLD | UFS_UID_OLD | UFS_ST_OLD | UFS_CG_OLD;
+        flags |= UFS_DE_42BSD | UFS_UID_42BSD | UFS_ST_42BSD | UFS_CG_42BSD;
         if (!(sb->s_flags & MS_RDONLY)) {
             if (!silent)
                 printk(KERN_INFO "ufstype=old is supported read-only\n");
@@ -1093,7 +1110,7 @@ U_ufs_fill_super(int fd, void* data, int silent)
         uspi->s_sbsize = super_block_size = 2048;
         uspi->s_sbbase = 0;
         uspi->s_dirblksize = 1024;
-        flags |= UFS_DE_OLD | UFS_UID_OLD | UFS_ST_OLD | UFS_CG_OLD;
+        flags |= UFS_DE_42BSD | UFS_UID_42BSD | UFS_ST_42BSD | UFS_CG_42BSD;
         if (!(sb->s_flags & MS_RDONLY)) {
             if (!silent)
                 printk(KERN_INFO "ufstype=nextstep is supported read-only\n");
@@ -1109,7 +1126,7 @@ U_ufs_fill_super(int fd, void* data, int silent)
         uspi->s_sbsize = super_block_size = 2048;
         uspi->s_sbbase = 0;
         uspi->s_dirblksize = 1024;
-        flags |= UFS_DE_OLD | UFS_UID_OLD | UFS_ST_OLD | UFS_CG_OLD;
+        flags |= UFS_DE_42BSD | UFS_UID_42BSD | UFS_ST_42BSD | UFS_CG_42BSD;
         if (!(sb->s_flags & MS_RDONLY)) {
             if (!silent)
                 printk(KERN_INFO "ufstype=nextstep-cd is supported read-only\n");
@@ -1140,7 +1157,7 @@ U_ufs_fill_super(int fd, void* data, int silent)
         uspi->s_fshift = 10;
         uspi->s_sbsize = super_block_size = 2048;
         uspi->s_sbbase = 0;
-        flags |= UFS_DE_OLD | UFS_UID_OLD | UFS_ST_OLD | UFS_CG_OLD;
+        flags |= UFS_DE_42BSD | UFS_UID_42BSD | UFS_ST_42BSD | UFS_CG_42BSD;
         if (!(sb->s_flags & MS_RDONLY)) {
             if (!silent)
                 printk(KERN_INFO "ufstype=hp is supported read-only\n");
@@ -1289,12 +1306,13 @@ magic_found:
 
     sbi->s_flags = flags; /* After this line some functions use s_flags*/
 
-    /* ufs_print_super_stuff(sb, usb1, usb2, usb3); */
+    ufs_print_super_stuff(sb, usb1, usb2, usb3);
 
     /* Check if file system was unmounted cleanly. Make read-only otherwise. */
 
     if (((flags & UFS_ST_MASK) == UFS_ST_44BSD) ||
-        ((flags & UFS_ST_MASK) == UFS_ST_OLD)   ||
+        ((flags & UFS_ST_MASK) == UFS_ST_43BSD)   ||
+        ((flags & UFS_ST_MASK) == UFS_ST_42BSD)   ||
         (((flags & UFS_ST_MASK) == UFS_ST_SUN   ||
         (flags & UFS_ST_MASK) == UFS_ST_SUNOS   ||
         (flags & UFS_ST_MASK) == UFS_ST_SUNx86) &&
