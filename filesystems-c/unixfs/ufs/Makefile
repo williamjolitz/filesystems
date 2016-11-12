@@ -36,6 +36,9 @@ all: $(TARGETS)
 OBJS = unixfs_ufs.o ufs_mainx.o ufs.o
 OBJS_COMMON = $(UNIXFS)/unixfs.o $(UNIXFS)/unixfs_internal.o $(LINUX)/linux.o $(LINUX_KERNEL)/lib/parser.o
 
+install: ufs
+	cp ufs /usr/local/bin/ufs
+
 ufs: $(OBJS) $(OBJS_COMMON)
 	$(CC) $(CFLAGS_OSXFUSE) $(CFLAGS_EXTRA) -o $@ $^ -L$(LIBRARY_DIR) $(LIBS)
 

@@ -26,8 +26,8 @@
 static ino_t ufs_find_entry_s(struct inode *dir, const char* name);
 static int ufs_get_dirpage(struct inode *inode, sector_t index, char *pagebuf);
 static int ufs_read_cylinder_structures(struct super_block *sb);
-static void ufs_print_cylinder_stuff(struct super_block* sb,
-                                     struct ufs_cylinder_group* cg);
+/*static void ufs_print_cylinder_stuff(struct super_block* sb,
+                                     struct ufs_cylinder_group* cg);*/
 static void ufs_setup_cstotal(struct super_block* sb);
 static int ufs_read_cylinder_structures(struct super_block* sb);
 static u64 ufs_frag_map(struct inode *inode, sector_t frag, int* error);
@@ -172,7 +172,7 @@ ufs_print_super_stuff(struct super_block* sb,
     printk("\n");
 }
 
-static void
+/*static void
 ufs_print_cylinder_stuff(struct super_block* sb, struct ufs_cylinder_group* cg)
 {
     printk("\nufs_print_cylinder_stuff\n");
@@ -207,7 +207,7 @@ ufs_print_cylinder_stuff(struct super_block* sb, struct ufs_cylinder_group* cg)
     printk("  nclusterblks  %u\n",
            fs32_to_cpu(sb, cg->cg_u.cg_44.cg_nclusterblks));
     printk("\n");
-}
+}*/
 
 static int
 ufs_parse_options(char* options, unsigned* mount_options)
@@ -420,8 +420,8 @@ ufs_read_cylinder_structures(struct super_block* sb)
             (struct ufs_cylinder_group*)sbi->s_ucg[i]->b_data))
             goto failed;
 
-        ufs_print_cylinder_stuff(sb,
-            (struct ufs_cylinder_group*)sbi->s_ucg[i]->b_data);
+        /*ufs_print_cylinder_stuff(sb,
+            (struct ufs_cylinder_group*)sbi->s_ucg[i]->b_data);*/
     }
 
     for (i = 0; i < UFS_MAX_GROUP_LOADED; i++) {
@@ -798,7 +798,7 @@ ufs_check_page(struct inode* dir, sector_t index, char* page)
     char* error;
 
     int fres = -1;
-
+    UFSD("ENTER\n");
     if ((dir->I_size >> PAGE_CACHE_SHIFT) == index) {
 
         limit = dir->I_size & ~PAGE_CACHE_MASK;
@@ -880,7 +880,7 @@ static unsigned
 ufs_last_byte(struct inode* inode, unsigned long page_nr)
 {
     unsigned last_byte = inode->I_size;
-
+    UFSD("ENTER\n");
     last_byte -= page_nr << PAGE_CACHE_SHIFT;
     if (last_byte > PAGE_CACHE_SIZE)
         last_byte = PAGE_CACHE_SIZE;
@@ -891,6 +891,7 @@ ufs_last_byte(struct inode* inode, unsigned long page_nr)
 static struct ufs_dir_entry*
 ufs_dotdot_s(struct inode* dir, char* pagebuf)
 {
+    UFSD("ENTER\n");
     int ret = ufs_get_dirpage(dir, 0, pagebuf);
     struct ufs_dir_entry* de = NULL;
     if (ret == 0)
@@ -901,6 +902,7 @@ ufs_dotdot_s(struct inode* dir, char* pagebuf)
 static int
 ufs_get_dirpage(struct inode* inode, sector_t index, char* pagebuf)
 {
+    UFSD("ENTER\n");
     int ret = U_ufs_get_page(inode, index, pagebuf);
     /* if (ufs_check_page(inode, index, pagebuf) != 0) return -1; */
     return ret;
@@ -971,7 +973,7 @@ struct super_block*
 U_ufs_fill_super(int fd, void* data, int silent)
 {
     struct super_block* sb = NULL;
-    struct ufs_sb_info* sbi = NULL;
+    struct ufs_sb_info* sbi = NULL; // mount options
     struct ufs_sb_private_info* uspi;
 
     struct ufs_super_block_first*  usb1;
@@ -994,7 +996,7 @@ U_ufs_fill_super(int fd, void* data, int silent)
         return NULL;
 
     sb->s_bdev = fd;        
-    sb->s_flags |= MS_RDONLY;
+    // sb->s_flags |= MS_RDONLY;
 
     sbi = kzalloc(sizeof(struct ufs_sb_info), GFP_KERNEL);
     if (!sbi)
@@ -1305,7 +1307,8 @@ magic_found:
     }
 
     sbi->s_flags = flags; /* After this line some functions use s_flags*/
-
+    UFSD("UFS s_flags are: %u, Read only? %s\n", sbi->s_flags, (sbi->s_flags & MS_RDONLY) != 0 ? "true" : "false");
+    UFSD("UFS sb->s_flags are: %lu, Read only? %s\n", sb->s_flags, (sb->s_flags & MS_RDONLY) != 0 ? "true" : "false");
     ufs_print_super_stuff(sb, usb1, usb2, usb3);
 
     /* Check if file system was unmounted cleanly. Make read-only otherwise. */
@@ -1319,6 +1322,23 @@ magic_found:
         (ufs_get_fs_state(sb, usb1, usb3) ==
          (UFS_FSOK - fs32_to_cpu(sb, usb1->fs_time))))) {
 
+        if (((flags & UFS_ST_MASK) == UFS_ST_43BSD)   ||
+            ((flags & UFS_ST_MASK) == UFS_ST_42BSD)) {
+
+            if (usb1->fs_fmod != 0){
+                if (usb1->fs_ronly != 0) {
+                    UFSD("fs is read-only\n");
+                }
+                else {
+                    printk("ufs_read_super: fs needs fsck\n");
+                }
+                sb->s_flags |= MS_RDONLY;
+            }
+            else {
+                UFSD("fs is clean\n");
+                sb->s_flags &= ~MS_RDONLY;
+            }
+        } else
         switch(usb1->fs_clean) {
 
         case UFS_FSCLEAN:
@@ -1355,7 +1375,8 @@ magic_found:
     }
 
     /* Read ufs_super_block into internal data structures */
-
+    UFSD("UFS s_flags are: %u, Read only? %s\n", sbi->s_flags, (sbi->s_flags & MS_RDONLY) != 0 ? "true" : "false");
+    UFSD("UFS sb->s_flags are: %lu, Read only? %s\n", sb->s_flags, (sb->s_flags & MS_RDONLY) != 0 ? "true" : "false");
     sb->s_magic = fs32_to_cpu(sb, usb3->fs_magic);
 
     uspi->s_sblkno   = fs32_to_cpu(sb, usb1->fs_sblkno);
@@ -1453,9 +1474,13 @@ magic_found:
 
     /* Read cylinder group structures */
 
-    if (!(sb->s_flags & MS_RDONLY))
-        if (!ufs_read_cylinder_structures(sb))
+    UFSD("sb->s_flags is %lu, and SB is marked as Read only? %s\n", sb->s_flags, (sb->s_flags & MS_RDONLY) != 0 ? "true" : "false")
+    if (!(sb->s_flags & MS_RDONLY)) {
+        if (!ufs_read_cylinder_structures(sb)) {
             goto failed;
+        }
+    }
+    // sb->s_flags |= MS_RDONLY; // XXX?
 
     /*
      * ufs_read_cylinder_structures(sb);
@@ -1495,6 +1520,8 @@ U_ufs_statvfs(struct super_block* sb, struct statvfs* buf)
     struct ufs_super_block_second* usb2;
     struct ufs_super_block_third*  usb3;
 
+    UFSD("ENTER\n");
+
     lock_kernel();
 
     usb1 = ubh_get_usb_first(uspi);
@@ -1508,22 +1535,32 @@ U_ufs_statvfs(struct super_block* sb, struct statvfs* buf)
         /* buf->f_type = UFS_MAGIC; */
         buf->f_blocks = uspi->s_dsize;
     }
+    UFSD("f_blocks %d\n", buf->f_blocks);
 
     buf->f_bfree = ufs_blkstofrags(uspi->cs_total.cs_nbfree) +
                                    uspi->cs_total.cs_nffree;
+    UFSD("f_bfree %d\n", buf->f_bfree);
     buf->f_ffree = uspi->cs_total.cs_nifree;
+    UFSD("f_ffree %d\n", buf->f_ffree);
 
     buf->f_bavail =
         (buf->f_bfree > (((long)buf->f_blocks / 100) * uspi->s_minfree))
         ? (buf->f_bfree - (((long)buf->f_blocks / 100) * uspi->s_minfree)) : 0;
+    UFSD("f_bavail %d\n", buf->f_bavail);
 
     buf->f_files = uspi->s_ncg * uspi->s_ipg;
+    UFSD("f_files %d\n", buf->f_files);
     buf->f_namemax = UFS_MAXNAMLEN;
+    UFSD("f_namemax %lu\n", buf->f_namemax);
 
     buf->f_frsize = sb->s_blocksize;
+    UFSD("f_frsize %lu\n", buf->f_frsize);
     buf->f_bsize = fs32_to_cpu(sb, usb1->fs_bsize);
+    UFSD("f_bsize %lu\n", buf->f_bsize);
 
     unlock_kernel();
+
+    UFSD("EXIT\n");
 
     return 0;
 }
@@ -1587,12 +1624,15 @@ U_ufs_iget(struct super_block* sb, struct inode* inode)
 
 bad_inode:
 
+    UFSD("EXIT bad inode\n");
+
     return -1;
 }
 
 ino_t
 U_ufs_inode_by_name(struct inode* dir, const char* name)
 {
+    UFSD("ENTER/EXIT\n");
     return ufs_find_entry_s(dir, name);
 }
 
@@ -1649,11 +1689,12 @@ U_ufs_get_block(struct inode* inode, sector_t fragment, off_t* result)
       int ret;
       struct buffer_head bh;
 
+      UFSD("ENTER\n");
       if ((ret = ufs_getfrag_block(inode, fragment, &bh, 0)) == 0)
           *result = bh.b_blocknr;
       else
           *result = 0;
-
+      UFSD("EXIT\n");
       return ret;
 }
 
@@ -1663,6 +1704,7 @@ U_ufs_get_page(struct inode* inode, sector_t index, char* pagebuf)
     sector_t iblock, lblock;
     unsigned int blocksize;
 
+    UFSD("ENTER\n");
     blocksize = 1 << inode->I_blkbits;
 
     iblock = index << (PAGE_CACHE_SHIFT - inode->I_blkbits);
